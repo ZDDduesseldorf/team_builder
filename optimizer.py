@@ -1,9 +1,11 @@
 """Team and role assignment optimizer for the W4 software engineering lab.
 
 The optimization is deliberately dependency-free. Students rank three of four roles.
-The optimizer first chooses balanced team sizes, then assigns roles globally with
-lexicographic preference priorities (1st > 2nd > 3rd > unranked), and finally
-places people into teams while respecting per-team role constraints.
+The optimizer first chooses balanced team sizes, then assigns roles globally.
+Assignments outside a person's three ranked roles are avoided whenever a fully
+ranked solution is feasible. Among equally feasible ranked solutions, lower
+preference ranks are preferred. Finally, people are placed into teams while
+respecting per-team role constraints.
 """
 
 from __future__ import annotations
@@ -145,8 +147,14 @@ def _role_assignment(
     """Assign every participant to a role in one min-cost-flow run.
 
     Role minima are represented by strongly rewarded mandatory capacity on the
-    role-to-sink edges. Because every participant can be assigned to every role
-    (unranked roles merely score poorly), these minima are always feasible.
+    role-to-sink edges. Because every participant can be assigned to every role,
+    these minima are always feasible.
+
+    Preference costs are chosen so that reducing the number of unranked
+    assignments always dominates any improvement among ranked assignments. This
+    means an unranked role is used only when the role constraints make it
+    unavoidable. With the same number of unranked assignments, the optimizer
+    then prefers 1st choices over 2nd choices and 2nd choices over 3rd choices.
     """
     n = len(people)
     source = 0
@@ -155,11 +163,23 @@ def _role_assignment(
     sink = role_start + len(ROLES)
     graph: list[list[_Edge]] = [[] for _ in range(sink + 1)]
 
-    reward = {
-        1: (n + 1) ** 2,
-        2: n + 1,
-        3: 1,
-        None: 0,
+    # Minimize dissatisfaction rather than maximizing first-choice rewards.
+    #
+    # A single unranked assignment costs more than the maximum possible ranked
+    # dissatisfaction of the entire cohort. Therefore, any solution with fewer
+    # unranked assignments always wins if it satisfies the same hard role
+    # constraints.
+    ranked_penalty = {
+        1: 0,
+        2: 1,
+        3: 3,
+    }
+    unranked_penalty = n * max(ranked_penalty.values()) + 1
+    preference_cost = {
+        1: ranked_penalty[1],
+        2: ranked_penalty[2],
+        3: ranked_penalty[3],
+        None: unranked_penalty,
     }
 
     person_role_edges: dict[tuple[int, str], _Edge] = {}
@@ -169,7 +189,7 @@ def _role_assignment(
         for r_index, role in enumerate(ROLES):
             rnode = role_start + r_index
             person_role_edges[(i, role)] = _add_edge(
-                graph, pnode, rnode, 1, -reward[_rank(person, role)]
+                graph, pnode, rnode, 1, preference_cost[_rank(person, role)]
             )
 
     base = _base_role_counts(team_sizes)

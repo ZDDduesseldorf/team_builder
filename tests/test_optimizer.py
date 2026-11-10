@@ -64,3 +64,46 @@ def test_all_can_get_first_choice_when_preferences_fit():
     _, stats = optimize_teams(cohort)
     assert stats["first_choices"] == 5
     assert stats["unranked"] == 0
+
+
+def test_avoids_unranked_role_when_ranked_solution_exists():
+    cohort = [
+        Person(
+            "ggg",
+            "Dirk FF",
+            (
+                ROLES[3],  # Review / Release
+                ROLES[2],  # Software Development
+                ROLES[1],  # Test Team
+            ),
+        ),
+        Person(
+            "ggg22",
+            "Peter P",
+            (
+                ROLES[1],  # Test Team
+                ROLES[3],  # Review / Release
+                ROLES[2],  # Software Development
+            ),
+        ),
+        Person(
+            "ggg224",
+            "Beter B",
+            (
+                ROLES[2],  # Software Development
+                ROLES[0],  # Product Owner / Integration
+                ROLES[3],  # Review / Release
+            ),
+        ),
+    ]
+
+    assignments, stats = optimize_teams(cohort)
+    by_name = {assignment.name: assignment for assignment in assignments}
+
+    assert stats["unranked"] == 0
+    assert by_name["Dirk FF"].role == ROLES[2]
+    assert by_name["Dirk FF"].preference_rank == 2
+    assert by_name["Peter P"].role == ROLES[1]
+    assert by_name["Peter P"].preference_rank == 1
+    assert by_name["Beter B"].role == ROLES[0]
+    assert by_name["Beter B"].preference_rank == 2
