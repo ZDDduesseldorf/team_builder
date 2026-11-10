@@ -1,0 +1,14 @@
+[project]
+name = "w4-team-role-builder"
+version = "2026.1"
+description = "Preference-based team and role assignment for the W4 software engineering lab"
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit==1.56.0",
+    "requests>=2.31",
+    "ruff>=0.17.4",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
