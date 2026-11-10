@@ -1,4 +1,4 @@
-# W4 Team Builder
+# Software Engineering Team Builder
 
 Kleine Streamlit-App zum Sammeln von Rollenwünschen und zur automatischen Einteilung der Studierenden für das W4-Teampraktikum.
 
